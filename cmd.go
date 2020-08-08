@@ -162,7 +162,7 @@ func handleCmd(cmdArgs *settings.Arguments, alpmHandle *alpm.Handle, dbExecutor 
 	case "R", "remove":
 		return handleRemove(cmdArgs)
 	case "S", "sync":
-		return handleSync(cmdArgs, alpmHandle, dbExecutor)
+		return handleSync(cmdArgs, dbExecutor)
 	case "T", "deptest":
 		return show(passToPacman(cmdArgs))
 	case "U", "upgrade":
@@ -269,7 +269,7 @@ func handleYogurt(cmdArgs *settings.Arguments, dbExecutor *db.AlpmExecutor) erro
 	return displayNumberMenu(cmdArgs.Targets, dbExecutor, cmdArgs)
 }
 
-func handleSync(cmdArgs *settings.Arguments, alpmHandle *alpm.Handle, dbExecutor *db.AlpmExecutor) error {
+func handleSync(cmdArgs *settings.Arguments, dbExecutor *db.AlpmExecutor) error {
 	targets := cmdArgs.Targets
 
 	if cmdArgs.ExistsArg("s", "search") {
@@ -287,7 +287,7 @@ func handleSync(cmdArgs *settings.Arguments, alpmHandle *alpm.Handle, dbExecutor
 		return syncClean(cmdArgs, dbExecutor)
 	}
 	if cmdArgs.ExistsArg("l", "list") {
-		return syncList(cmdArgs, alpmHandle)
+		return syncList(cmdArgs, dbExecutor)
 	}
 	if cmdArgs.ExistsArg("g", "groups") {
 		return show(passToPacman(cmdArgs))
@@ -430,7 +430,7 @@ func displayNumberMenu(pkgS []string, dbExecutor *db.AlpmExecutor, cmdArgs *sett
 	return install(arguments, dbExecutor, true)
 }
 
-func syncList(cmdArgs *settings.Arguments, alpmHandle *alpm.Handle) error {
+func syncList(cmdArgs *settings.Arguments, dbExecutor *db.AlpmExecutor) error {
 	aur := false
 
 	for i := len(cmdArgs.Targets) - 1; i >= 0; i-- {
@@ -441,11 +441,6 @@ func syncList(cmdArgs *settings.Arguments, alpmHandle *alpm.Handle) error {
 	}
 
 	if (config.Runtime.Mode == settings.ModeAny || config.Runtime.Mode == settings.ModeAUR) && (len(cmdArgs.Targets) == 0 || aur) {
-		localDB, err := alpmHandle.LocalDB()
-		if err != nil {
-			return err
-		}
-
 		resp, err := http.Get(config.AURURL + "/packages.gz")
 		if err != nil {
 			return err
@@ -462,7 +457,7 @@ func syncList(cmdArgs *settings.Arguments, alpmHandle *alpm.Handle) error {
 			} else {
 				fmt.Printf("%s %s %s", magenta("aur"), bold(name), bold(green(gotext.Get("unknown-version"))))
 
-				if localDB.Pkg(name) != nil {
+				if dbExecutor.LocalPackage(name) != nil {
 					fmt.Print(bold(blue(gotext.Get(" [Installed]"))))
 				}
 
